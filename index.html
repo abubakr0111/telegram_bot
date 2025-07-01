@@ -1,124 +1,35 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Заявка на обмен USDT</title>
-<style>
-  @import url('https://fonts.googleapis.com/css2?family=Inter&display=swap');
-
-  body {
-    font-family: 'Inter', sans-serif;
-    background: linear-gradient(135deg, #1e3c72, #2a5298);
-    color: #f0f4f8;
-    margin: 0; padding: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-  }
-  .container {
-    background: linear-gradient(145deg, #c0c7cc, #e1e6eb);
-    border-radius: 16px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-    padding: 32px;
-    width: 320px;
-    color: #1a1a1a;
-  }
-  h1 {
-    margin-bottom: 24px;
-    font-weight: 700;
-    text-align: center;
-    color: #0a2e63;
-  }
-  label {
-    display: block;
-    margin-bottom: 6px;
-    font-weight: 600;
-    color: #2c3e50;
-  }
-  input[type="text"], input[type="tel"], input[type="number"] {
-    width: 100%;
-    padding: 10px 12px;
-    margin-bottom: 20px;
-    border: 2px solid #7f8c8d;
-    border-radius: 10px;
-    font-size: 16px;
-    transition: border-color 0.3s ease;
-  }
-  input[type="text"]:focus, input[type="tel"]:focus, input[type="number"]:focus {
-    border-color: #1e3c72;
-    outline: none;
-  }
-  .radio-group {
-    display: flex;
-    justify-content: space-around;
-    margin-bottom: 24px;
-  }
-  .radio-group label {
-    color: #34495e;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  input[type="radio"] {
-    margin-right: 6px;
-  }
-  button {
-    width: 100%;
-    background: #1e3c72;
-    color: #e1e6eb;
-    font-size: 18px;
-    font-weight: 700;
-    padding: 12px 0;
-    border: none;
-    border-radius: 14px;
-    cursor: pointer;
-    box-shadow: 0 5px 10px rgba(30, 60, 114, 0.6);
-    transition: background 0.3s ease;
-  }
-  button:hover {
-    background: #16345a;
-  }
-  .message {
-    text-align: center;
-    margin-top: 20px;
-    font-weight: 600;
-    color: #0a2e63;
-  }
-  @media (max-width: 400px) {
-    .container {
-      width: 90vw;
-      padding: 20px;
-    }
-  }
-</style>
-</head>
-<body>
-
-<div class="container">
-  <h1>Заявка на обмен USDT</h1>
-  <form id="exchangeForm">
-    <div class="radio-group">
-      <label><input type="radio" name="operation" value="buy" checked> Купить USDT</label>
-      <label><input type="radio" name="operation" value="sell"> Продать USDT</label>
-    </div>
-    <label for="amount">Сумма (USDT):</label>
-    <input type="number" id="amount" name="amount" min="1" step="any" required placeholder="Введите сумму" />
-
-    <label for="wallet">Адрес кошелька:</label>
-    <input type="text" id="wallet" name="wallet" required placeholder="Введите адрес кошелька" />
-
-    <label for="phone">Контактный телефон:</label>
-    <input type="tel" id="phone" name="phone" pattern="\+?\d{10,15}" required placeholder="+7xxxxxxxxxx" />
-
-    <button type="submit">Отправить заявку</button>
-  </form>
-  <div class="message" id="message"></div>
-</div>
-
 <script>
   const form = document.getElementById('exchangeForm');
   const messageEl = document.getElementById('message');
+
+  let currentRate = 0;
+
+  // Получаем курс USDT к RUB и прибавляем 1 рубль
+  async function fetchRate() {
+    try {
+      const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=rub');
+      const data = await res.json();
+      currentRate = data.tether.rub + 1; // +1 рубль
+      document.getElementById('rateDisplay').innerHTML = `
+        💱 <strong>Курс покупки USDT:</strong> ${currentRate.toFixed(2)} ₽
+      `;
+    } catch (err) {
+      document.getElementById('rateDisplay').innerHTML = '⚠️ Не удалось загрузить курс';
+    }
+  }
+
+  fetchRate(); // Запуск при загрузке
+
+  // При вводе суммы — пересчёт RUB
+  form.amount.addEventListener('input', () => {
+    const amount = parseFloat(form.amount.value);
+    if (!isNaN(amount) && currentRate > 0) {
+      const total = (amount * currentRate).toFixed(2);
+      document.getElementById('totalDisplay').innerHTML = `💰 <strong>Итого к оплате:</strong> ${total} ₽`;
+    } else {
+      document.getElementById('totalDisplay').innerHTML = '';
+    }
+  });
 
   form.addEventListener('submit', e => {
     e.preventDefault();
@@ -128,7 +39,6 @@
     const phone = form.phone.value.trim();
     const operation = form.operation.value;
 
-    // Простая валидация телефона
     const phonePattern = /^\+?\d{10,15}$/;
     if (!phonePattern.test(phone)) {
       messageEl.textContent = 'Введите корректный телефон в формате +7xxxxxxxxxx';
@@ -136,15 +46,23 @@
       return;
     }
 
-    // Можно тут добавить отправку данных на сервер или Telegram
+    const payload = {
+      operation,
+      amount,
+      wallet,
+      phone,
+      rubTotal: (parseFloat(amount) * currentRate).toFixed(2),
+      rateUsed: currentRate.toFixed(2)
+    };
+
+    // Отправка данных в Telegram WebApp
+    if (window.Telegram && Telegram.WebApp) {
+      Telegram.WebApp.sendData(JSON.stringify(payload));
+    }
 
     messageEl.style.color = '#0a2e63';
     messageEl.textContent = 'Спасибо! Ваша заявка принята, с вами свяжутся в ближайшее время.';
-
-    // Очистить форму
     form.reset();
+    document.getElementById('totalDisplay').innerHTML = '';
   });
 </script>
-
-</body>
-</html>
