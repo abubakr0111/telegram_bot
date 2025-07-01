@@ -67,6 +67,48 @@
     </form>
     <div class="message" id="message"></div>
   </div>
+  <script>
+  // Проверяем, что WebApp доступен
+  const tg = window.Telegram.WebApp;
+
+  // Пример: функция вызывается при клике на кнопку "Отправить"
+  function onSubmit() {
+    // Получаем данные из формы (замени на свои id или классы)
+    const operation = document.querySelector('input[name="operation"]:checked').value; // например buy или sell
+    const amount = document.getElementById('amount').value;
+    const wallet = document.getElementById('wallet').value;
+    const phone = document.getElementById('phone').value;
+
+    // Формируем объект с данными
+    const data = {
+      operation: operation,
+      amount: amount,
+      wallet: wallet,
+      phone: phone
+    };
+
+    // Отправляем данные в Telegram
+    tg.sendData(JSON.stringify(data));
+
+    // Опционально: показать пользователю сообщение или закрыть WebApp
+    tg.close();
+  }
+
+  // Привязка события к кнопке
+  document.getElementById('sendButton').addEventListener('click', onSubmit);
+</script>
+
+  <form id="orderForm">
+  <label><input type="radio" name="operation" value="buy" checked> Купить</label>
+  <label><input type="radio" name="operation" value="sell"> Продать</label><br>
+
+  <input type="number" id="amount" placeholder="Количество USDT" required><br>
+  <input type="text" id="wallet" placeholder="Ваш кошелек" required><br>
+  <input type="tel" id="phone" placeholder="Телефон" required><br>
+
+  <button type="button" id="sendButton">Отправить</button>
+</form>
+
 
   <script>
     const form = document.getElementById('exchangeForm');
