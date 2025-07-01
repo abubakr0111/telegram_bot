@@ -47,7 +47,6 @@
     .message {
       margin-top: 10px;
       text-align: center;
-      font-weight: bold;
     }
   </style>
 </head>
@@ -56,64 +55,76 @@
     <h1>Заявка на обмен</h1>
     <form id="exchangeForm">
       <label>Операция:</label>
-      <label><input type="radio" name="operation" value="Купить" checked> Купить</label>
-      <label><input type="radio" name="operation" value="Продать"> Продать</label>
+      <label><input type="radio" name="operation" value="buy" checked> Купить</label>
+      <label><input type="radio" name="operation" value="sell"> Продать</label>
 
       <label>Сумма (USDT):</label>
-      <input type="number" id="amount" name="amount" required />
+      <input type="number" id="amount" required />
 
       <div class="price-info" id="priceInfo"></div>
 
       <label>Кошелек:</label>
-      <input type="text" id="wallet" name="wallet" required />
+      <input type="text" id="wallet" required />
 
       <label>Телефон:</label>
-      <input type="tel" id="phone" name="phone" required pattern="^(\+7|8)\d{10}$" />
+      <input type="tel" id="phone" required pattern="^(\+7|8)\d{10}$" />
 
-      <button type="submit" id="sendButton">Отправить</button>
+      <button type="submit">Отправить</button>
     </form>
     <div class="message" id="message"></div>
   </div>
 
   <script>
-    const tg = window.Telegram.WebApp;
     const form = document.getElementById('exchangeForm');
     const priceInfo = document.getElementById('priceInfo');
-    const amountInput = document.getElementById('amount');
-    const rate = 94;
-    const ratePlus = rate + 1;
+    const messageDiv = document.getElementById('message');
+    const rateBuy = 95;  // Пример курса покупки
+    const rateSell = 94; // Пример курса продажи
 
-    amountInput.addEventListener('input', () => {
-      const amount = parseFloat(amountInput.value);
+    form.amount.addEventListener('input', () => {
+      const amount = parseFloat(form.amount.value);
+      const operation = form.operation.value;
       if (!isNaN(amount)) {
-        const total = amount * ratePlus;
-        priceInfo.textContent = `Стоимость: ~${total.toFixed(2)} ₽ по курсу ${ratePlus}₽`;
+        const rate = (operation === "buy") ? rateBuy : rateSell;
+        const total = amount * rate;
+        priceInfo.textContent = `~ ${total.toFixed(2)} ₽ по курсу ${rate} ₽`;
       } else {
         priceInfo.textContent = '';
       }
     });
 
-    form.addEventListener('submit', e => {
+    form.operation.forEach(el => {
+      el.addEventListener('change', () => {
+        form.amount.dispatchEvent(new Event('input'));
+      });
+    });
+
+    form.addEventListener('submit', function (e) {
       e.preventDefault();
 
+      const operation = form.operation.value;
+      const amount = parseFloat(form.amount.value);
+      const wallet = form.wallet.value;
+      const phone = form.phone.value;
+      const rate = (operation === "buy") ? rateBuy : rateSell;
+      const total = (amount * rate).toFixed(2);
+
       const data = {
-        operation: form.operation.value,
-        amount: form.amount.value,
-        wallet: form.wallet.value,
-        phone: form.phone.value,
-        total: (form.amount.value * ratePlus).toFixed(2)
+        operation,
+        amount,
+        wallet,
+        phone,
+        total
       };
 
-      if (tg) {
-        tg.sendData(JSON.stringify(data));
-        tg.close(); // Закрываем WebApp (по желанию)
-        document.getElementById('message').textContent = '✅ Заявка отправлена!';
+      if (window.Telegram.WebApp) {
+        Telegram.WebApp.sendData(JSON.stringify(data));
+        messageDiv.textContent = "✅ Заявка отправлена!";
+        form.reset();
+        priceInfo.textContent = '';
       } else {
-        document.getElementById('message').textContent = '❗ Откройте мини-приложение через Telegram.';
+        messageDiv.textContent = "❌ Откройте мини-апп в Telegram.";
       }
-
-      form.reset();
-      priceInfo.textContent = '';
     });
   </script>
 </body>
