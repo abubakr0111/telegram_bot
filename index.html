@@ -6,7 +6,6 @@
   <title>Заявка на обмен USDT</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Inter&display=swap');
-
     body {
       font-family: 'Inter', sans-serif;
       background: linear-gradient(135deg, #1e3c72, #2a5298);
@@ -17,165 +16,98 @@
       align-items: center;
       height: 100vh;
     }
-
     .container {
       background: #fff;
       border-radius: 16px;
       box-shadow: 0 4px 15px rgba(0,0,0,0.2);
       padding: 32px;
-      width: 330px;
+      width: 320px;
       color: #1a1a1a;
     }
-
-    h1 {
-      text-align: center;
-      color: #0a2e63;
-      margin-bottom: 24px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 6px;
-      font-weight: 600;
-    }
-
+    h1 { text-align: center; }
+    label { font-weight: bold; margin-top: 10px; display: block; }
     input, button {
       width: 100%;
-      padding: 10px 12px;
-      margin-bottom: 18px;
-      font-size: 16px;
+      padding: 10px;
+      margin: 8px 0;
       border-radius: 10px;
-      border: 2px solid #ccc;
     }
-
-    .radio-group {
-      display: flex;
-      justify-content: space-around;
-      margin-bottom: 16px;
-    }
-
     button {
-      background-color: #1e3c72;
+      background: #1e3c72;
       color: white;
-      font-weight: 700;
-      border: none;
-      cursor: pointer;
+      font-weight: bold;
     }
-
-    button:hover {
-      background-color: #16345a;
-    }
-
     .price-info {
-      text-align: center;
       margin-top: 10px;
       font-weight: bold;
-      color: #0a2e63;
-    }
-
-    .message {
-      text-align: center;
-      font-weight: 600;
-      color: green;
+      color: #2a5298;
     }
   </style>
 </head>
 <body>
+  <div class="container">
+    <h1>Заявка на обмен</h1>
+    <form id="exchangeForm">
+      <label>Операция:</label>
+      <label><input type="radio" name="operation" value="Купить" checked> Купить</label>
+      <label><input type="radio" name="operation" value="Продать"> Продать</label>
 
-<div class="container">
-  <h1>Заявка на обмен USDT</h1>
-  <form id="exchangeForm">
-    <div class="radio-group">
-      <label><input type="radio" name="operation" value="buy" checked> Купить</label>
-      <label><input type="radio" name="operation" value="sell"> Продать</label>
-    </div>
+      <label>Сумма (USDT):</label>
+      <input type="number" id="amount" required />
 
-    <label for="amount">Сумма (USDT):</label>
-    <input type="number" id="amount" name="amount" min="1" step="any" required placeholder="Введите сумму" />
+      <div class="price-info" id="priceInfo"></div>
 
-    <div class="price-info" id="priceInfo">Стоимость сделки появится ниже</div>
+      <label>Кошелек:</label>
+      <input type="text" id="wallet" required />
 
-    <label for="wallet">Кошелёк:</label>
-    <input type="text" id="wallet" name="wallet" required placeholder="TRC20 адрес" />
+      <label>Телефон:</label>
+      <input type="tel" id="phone" required pattern="^(\+7|8)\d{10}$" />
 
-    <label for="phone">Телефон:</label>
-    <input type="tel" id="phone" name="phone" pattern="\+?\d{10,15}" required placeholder="+7XXXXXXXXXX" />
+      <button type="submit">Отправить</button>
+    </form>
+    <div class="message" id="message"></div>
+  </div>
 
-    <button type="submit">Отправить</button>
-  </form>
+  <script>
+    const form = document.getElementById('exchangeForm');
+    const priceInfo = document.getElementById('priceInfo');
+    const amountInput = document.getElementById('amount');
+    const rate = 94; // пример биржевого курса, в реальности можно получать из API
+    const ratePlus = rate + 1;
 
-  <div class="message" id="message"></div>
-</div>
-
-<script>
-  const form = document.getElementById('exchangeForm');
-  const priceInfo = document.getElementById('priceInfo');
-  const message = document.getElementById('message');
-
-  let rate = 0;
-
-  // Получаем курс USDT → RUB
-  async function fetchRate() {
-    try {
-      const res = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=tether&vs_currencies=rub');
-      const data = await res.json();
-      rate = data.tether.rub;
-      updatePrice();
-    } catch (err) {
-      priceInfo.textContent = "❌ Не удалось получить курс";
-    }
-  }
-
-  function updatePrice() {
-    const amount = parseFloat(form.amount.value);
-    const operation = form.operation.value;
-
-    if (!rate || isNaN(amount) || amount <= 0) {
-      priceInfo.textContent = 'Стоимость сделки появится ниже';
-      return;
-    }
-
-    const price = operation === 'buy' ? (rate + 1) * amount : rate * amount;
-    priceInfo.textContent = `${operation === 'buy' ? 'Покупка' : 'Продажа'}: ${price.toFixed(2)} ₽`;
-  }
-
-  form.amount.addEventListener('input', updatePrice);
-  form.operation.forEach ? form.operation.forEach(el => el.addEventListener('change', updatePrice)) :
-  document.querySelectorAll('input[name="operation"]').forEach(el => el.addEventListener('change', updatePrice));
-
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const phone = form.phone.value.trim();
-    if (!/^\+?\d{10,15}$/.test(phone)) {
-      message.style.color = 'red';
-      message.textContent = 'Введите корректный номер';
-      return;
-    }
-
-    const formData = {
-      operation: form.operation.value,
-      amount: form.amount.value,
-      wallet: form.wallet.value,
-      phone: form.phone.value
-    };
-
-    try {
-      if (window.Telegram.WebApp) {
-        window.Telegram.WebApp.sendData(JSON.stringify(formData));
-        message.textContent = '✅ Заявка отправлена!';
-        message.style.color = 'green';
-        form.reset();
+    amountInput.addEventListener('input', () => {
+      const amount = parseFloat(amountInput.value);
+      if (!isNaN(amount)) {
+        const total = amount * ratePlus;
+        priceInfo.textContent = `Стоимость: ~${total.toFixed(2)} ₽ по курсу ${ratePlus}₽`;
+      } else {
         priceInfo.textContent = '';
       }
-    } catch (err) {
-      message.textContent = '❌ Ошибка при отправке данных';
-      message.style.color = 'red';
-    }
-  });
+    });
 
-  fetchRate();
-</script>
+    form.addEventListener('submit', e => {
+      e.preventDefault();
+      const data = {
+        operation: form.operation.value,
+        amount: form.amount.value,
+        wallet: form.wallet.value,
+        phone: form.phone.value,
+        total: (form.amount.value * ratePlus).toFixed(2)
+      };
 
+      // Отправка в Telegram WebApp
+      if (window.Telegram.WebApp) {
+        Telegram.WebApp.sendData(JSON.stringify(data));
+        document.getElementById('message').textContent = 'Заявка отправлена!';
+      } else {
+        document.getElementById('message').textContent = 'Откройте мини-апп через Telegram.';
+      }
+
+      form.reset();
+      priceInfo.textContent = '';
+    });
+  </script>
 </body>
 </html>
+  
+    
